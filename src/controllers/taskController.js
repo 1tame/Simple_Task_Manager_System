@@ -1,50 +1,121 @@
 const Task = require('../models/taskModel');
 
-//getting all the tasks
-exports.getTasks = async (req, res) =>{
-    try {
-        const task = await Task.find();
-        res.status(200).json(task);
-    } catch (error) {
-        res.status(500).json(error.message);
-    }
+// ✅ Get all tasks for logged-in user with search + pagination
+exports.getTasks = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Extract query params
+    const search = req.query.search || '';
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Build MongoDB filter
+    const filter = {
+      user: userId,
+      title: { $regex: search, $options: 'i' } // case-insensitive search
+    };
+
+    // Calculate total matching tasks
+    const totalTasks = await Task.countDocuments(filter);
+
+    // Fetch paginated and filtered tasks
+    const tasks = await Task.find(filter)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .sort({ createdAt: -1 }); // optional: newest first
+
+    res.status(200).json({
+      total: totalTasks,
+      page,
+      limit,
+      totalPages: Math.ceil(totalTasks / limit),
+      tasks
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-//delete task by id
-exports.deleteTask = async (req, res) =>{
-    try {
-        const {id} = req.params;
-        await Task.findByIdAndDelete(id);
-        res.status(200).json("Task deleted successfully")
-    } catch (error) {
-        res.status(500).json(error.message);
-    }
+// ✅ Add a new task for logged-in user
+exports.addTask = async (req, res) => {
+  try {
+    const { title, status } = req.body;
+
+    const newTask = new Task({
+      title,
+      status: status || 'pending',
+      user: req.user._id
+    });
+
+    const task = await newTask.save();
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-
-//updating task by id 
+// ✅ Update a task by ID (only if it belongs to user)
 exports.updateTask = async (req, res) => {
-    try {
-        const {id} = req.params;
-        const updatedTask = await Task.findByIdAndUpdate(id, req.body, {new: true});
-        res.status(200).json(updatedTask);
-        
-    } catch (error) {
-        res.status(500).json(error.message);
+  try {
+    const { id } = req.params;
+
+    const task = await Task.findOneAndUpdate(
+      { _id: id, user: req.user._id },
+      req.body,
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found or unauthorized' });
     }
-}
 
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
-//adding new task
-exports.addTask = async (req, res) =>{
-    try {
-        const {title} = await new Task(req.body);
-        const newTask = await Task({title});
-        const task = await newTask.save();
-        res.status(200).json(task);
+// ✅ Delete a task by ID (only if it belongs to user)
+exports.deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-    } catch (error) {
-        res.status(500).json("error: ", error.message);
-        
+    const task = await Task.findOneAndDelete({ _id: id, user: req.user._id });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found or unauthorized' });
     }
-}
+
+    res.status(200).json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+// ✅ PATCH only status of a task (if it belongs to user)
+exports.updateTaskStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required' });
+    }
+
+    const task = await Task.findOneAndUpdate(
+      { _id: id, user: req.user._id },
+      { status },
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found or unauthorized' });
+    }
+
+    res.status(200).json({ message: 'Status updated', task });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
