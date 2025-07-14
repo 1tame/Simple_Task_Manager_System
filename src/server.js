@@ -15,6 +15,11 @@ app.use(cors());
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Main route to serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.use(express.json());
 app.use('/tasks', taskRoutes);
 app.use('/users', userRoutes);
