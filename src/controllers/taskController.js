@@ -40,10 +40,10 @@ exports.getTasks = async (req, res) => {
 // ✅ Add a new task for logged-in user
 exports.addTask = async (req, res) => {
   try {
-    const { title, status } = req.body;
+    const { name, status } = req.body;
 
     const newTask = new Task({
-      title,
+      title: name,
       status: status || 'pending',
       user: req.user._id
     });
@@ -119,3 +119,18 @@ exports.updateTaskStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/*
+
+//for development only
+
+exports.clearAllTasks = async(req, res) =>{
+  try{
+    const result = await Task.deleteMany({});
+    res.status(200).json({message: `${result.deletedCount} task deleted.`});
+  } catch(error){
+    res.status(500).json({message: error.message});
+  };
+};
+
+*/
