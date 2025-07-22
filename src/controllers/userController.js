@@ -9,14 +9,15 @@ exports.registerUser = async (req, res) => {
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'Email already in use' });
+    if (existingUser)
+       return res.status(400).json({ message: 'Email already in use' });
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
     const newUser = await User.create({ name, email, password: hashedPassword });
-
+   
     res.status(201).json({ message: 'User registered successfully', user: newUser });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -39,17 +40,17 @@ exports.loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
-    
+    const payload = {id: user._id};
 
     // Generate JWT
-    const token = jwt.sign({ id: user._id }, jwt_secret, { expiresIn: '1d' });
+    const token = jwt.sign(payload, jwt_secret, { expiresIn: '1d' });
 
     res.json({ message: 'Login successful', token });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
+   
 
 // ✅ Get profile of logged-in user
 exports.getUserProfile = async (req, res) => {
