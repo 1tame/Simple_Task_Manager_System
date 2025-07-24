@@ -12,7 +12,6 @@ const app = express();
 
 app.use(cors());
 
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Main route to serve index.html
